@@ -7,9 +7,11 @@ services:
     ports: ["27018:27017"]
     volumes: ["order-mongo:/data/db"]
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 5s
-      retries: 20
+      test: ["CMD", "mongosh", "--quiet", "--norc", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 15s
+      start_period: 30s
+      retries: 10
 
 volumes:
   order-mongo:
