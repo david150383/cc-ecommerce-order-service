@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ecommerce.local/order-service/order-created.v1.schema.json",
+  "title": "OrderCreated v1",
+  "description": "A pending order was created with immutable price snapshots.",
+  "x-message-kind": "event",
+  "x-producer": "ecommerce-order-service",
+  "x-consumers": [],
+  "x-channel": "SNS order-events",
+  "$ref": "envelope.v1.schema.json",
+  "properties": {
+    "messageKind": {
+      "const": "event"
+    },
+    "messageType": {
+      "const": "OrderCreated"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "producer": {
+      "const": "ecommerce-order-service"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "orderId",
+        "customerId",
+        "status",
+        "items",
+        "total"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "customerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "const": "PENDING"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "sku",
+              "productId",
+              "name",
+              "quantity",
+              "unitPrice"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "sku": {
+                "type": "string",
+                "pattern": "^[A-Z0-9][A-Z0-9-]{2,63}$"
+              },
+              "productId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "unitPrice": {
+                "type": "object",
+                "description": "Integer minor units + ISO 4217 currency. Never floating point.",
+                "required": [
+                  "amountMinor",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "total": {
+          "type": "object",
+          "description": "Integer minor units + ISO 4217 currency. Never floating point.",
+          "required": [
+            "amountMinor",
+            "currency"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "amountMinor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

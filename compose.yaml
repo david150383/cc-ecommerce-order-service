@@ -1,0 +1,15 @@
+# Standalone dependencies for working on this service alone.
+name: ecommerce-order-service
+
+services:
+  mongo:
+    image: mongo:8
+    ports: ["27018:27017"]
+    volumes: ["order-mongo:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  order-mongo:
