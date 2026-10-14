@@ -53,7 +53,7 @@ const EnvSchema = z.object({
   /// Local emulator (Floci). Unset in AWS.
   AWS_ENDPOINT_URL: z.url().optional(),
   EVENTS_TOPIC_ARN: z.string().default("arn:aws:sns:us-east-1:000000000000:local-ecommerce-order-events"),
-  COMMANDS_QUEUE_NAME: z.string().default("local-ecommerce-order-commands"),
+  COMMANDS_QUEUE_NAME: z.string().default("local-ecommerce-order-commands.fifo"), // FIFO: per-order ordering
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(50).default(1_000),
   /// SQS long-poll wait (max 20). Tests use 1.
   CONSUMER_WAIT_TIME_SECONDS: z.coerce.number().int().min(0).max(20).default(20),
