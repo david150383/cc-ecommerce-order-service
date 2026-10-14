@@ -23,6 +23,13 @@ Schemas: [`events/schemas/`](../events/schemas). Examples: [`events/examples/`](
 |---|---|---|
 | `NotificationRequested` | `notification-commands` | Admin-triggered custom messages (later phases) |
 
-Processing rules: dedupe by `messageId` in `processed_messages` (unique index) inside the same
-MongoDB transaction as the order update. MongoDB transactions require a replica set; the local
-`mongo` container is started as a single-node replica set from Phase 3.
+## How events are recorded: an outbox inside the document
+
+MongoDB guarantees atomicity **per document**. So instead of a separate outbox collection (which would need a
+multi-document transaction, and therefore a replica set), each order embeds its pending events in an
+`outbox` array. The status change, the history entry and the events are written by **one**
+`findOneAndUpdate`, so they cannot get out of sync. The Phase 3 relay publishes entries and removes them
+(index `ix_orders_outbox_pending`). Command deduplication (Phase 3) uses the same idea: processed command
+ids are recorded on the order document in the same update.
+
+All events validate against `events/schemas/*` (tested against real output, not only examples).

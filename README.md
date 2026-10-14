@@ -4,7 +4,7 @@ Orders for the e-commerce platform: pending-order creation with immutable price 
 
 | | |
 |---|---|
-| Stack | Node.js 24, Express 5, TypeScript 5.9, MongoDB 8, Mongoose *(Phase 2)* |
+| Stack | Node.js 24, Express 5, TypeScript 5.9, MongoDB 8, Mongoose 9, jose 6, Zod 4 |
 | Port | 4004 |
 | Database | `order_db` (MongoDB), owned exclusively by this service |
 | API docs | [docs/api.md](docs/api.md) |
@@ -15,7 +15,8 @@ Orders for the e-commerce platform: pending-order creation with immutable price 
 | Phase | Done |
 |---|---|
 | 1: skeleton | ✅ app factory, zod-validated config, pino logging with secret redaction, correlation IDs, RFC 9457 errors, health/readiness, graceful shutdown, Dockerfile, CI, message schemas with validated examples |
-| 2: features | ⏳ see [docs/api.md](docs/api.md) |
+| 2: features | ✅ Price-snapshot orders via Product (service token from Auth), BigInt pricing with coupons/tax/shipping, idempotent creation, state machine with compare-and-set transitions, cancellation rules, ownership checks, embedded outbox, OpenAPI |
+| 3 | ⏳ SQS command consumer + outbox relay |
 
 ## Run locally
 
@@ -26,7 +27,18 @@ npm run dev            # http://localhost:4004/health/live
 npm test
 ```
 
-Dependencies: `docker compose up -d` here (standalone), or in `ecommerce-infrastructure` (whole platform).
+Dependencies: `docker compose up -d` here (standalone MongoDB on 27018), or in `ecommerce-infrastructure`
+(whole platform; MongoDB on 27017). `npm test` needs MongoDB: it recreates the `order_test` database.
+
+Creating orders needs the Product and Auth services plus service credentials (`SERVICE_CLIENT_SECRET`);
+reading, transitions and cancellation work without them.
+
+## Data and indexes
+
+MongoDB has no schema migrations; this service's equivalent is **index management**. `autoIndex` is off and
+`npm run db:sync-indexes` (the `migrate` image target, `order-migrate` in compose) creates the indexes declared
+in `src/orders/order.model.ts` and drops undeclared ones. Data migrations, when needed, will be versioned
+scripts in `src/scripts/`.
 
 ## Scripts
 
@@ -49,4 +61,8 @@ src/middleware/       correlation/request IDs, error handling
 src/routes/health.ts  /health/live, /health/ready
 events/schemas        JSON Schemas for messages this service owns
 events/examples       one valid example per schema
+src/orders/           model, pricing (BigInt), state machine, service, routes, Product client
+src/security/         token verification (JWKS), client-credentials token provider
+src/openapi/          OpenAPI generated from the Zod schemas
+src/scripts/          sync-indexes (migrate job), export-openapi
 ```
