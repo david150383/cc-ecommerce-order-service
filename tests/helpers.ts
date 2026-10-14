@@ -8,6 +8,7 @@ import { loadEnv } from "../src/config/env.js";
 import { HttpProblem } from "../src/lib/problem.js";
 import type { Catalog, CatalogItem, PriceLookupResult } from "../src/orders/catalog-client.js";
 import { orderModel } from "../src/orders/order.model.js";
+import { OrderService } from "../src/orders/order.service.js";
 import type { ReadinessCheck } from "../src/routes/health.js";
 import { TokenVerifier } from "../src/security/token-verifier.js";
 import { TEST_MONGODB_URI } from "./global-setup.js";
@@ -91,8 +92,10 @@ export async function buildTestContext(overrides: Record<string, string> = {}, r
     { jwksUrl: "http://unused.invalid/jwks", issuer: "ecommerce-auth-service", audiences: ["ecommerce-api", "ecommerce-order-service"] },
     (await testKeys()).jwks,
   );
-  const app = createApp({ env, logger, orders: orderModel(conn), catalog, verifier, readinessChecks });
-  return { app, catalog, logs, orders: orderModel(conn) };
+  const orders = orderModel(conn);
+  const service = new OrderService(orders, catalog, env);
+  const app = createApp({ env, logger, orders, catalog, verifier, readinessChecks, service });
+  return { app, catalog, logs, orders, service, env, logger };
 }
 
 export const newId = () => uuidv7();

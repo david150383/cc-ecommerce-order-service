@@ -73,6 +73,8 @@ export interface OrderDoc {
   statusHistory: StatusHistoryEntry[];
   outbox: OutboxEntry[];
   version: number;
+  /** Set while an outbox relay instance is publishing this document's events (expires on crash). */
+  relayLeaseUntil?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -144,6 +146,7 @@ const OrderSchema = new Schema<OrderDoc>(
       },
     ],
     version: { type: Number, required: true, default: 1 },
+    relayLeaseUntil: { type: Date, default: null },
   },
   { timestamps: true, versionKey: false, collection: "orders", strict: "throw" },
 );

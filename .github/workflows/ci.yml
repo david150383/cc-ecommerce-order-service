@@ -22,8 +22,16 @@ jobs:
         options: >-
           --health-cmd "mongosh --quiet --norc --eval 'db.adminCommand(\"ping\").ok'"
           --health-interval 10s --health-timeout 15s --health-retries 10
+      # Local AWS emulator for the SNS/SQS messaging tests.
+      floci:
+        image: floci/floci:2.0.1
+        ports: ["4566:4566"]
+        options: >-
+          --health-cmd "curl -fs http://localhost:4566/_floci/health"
+          --health-interval 5s --health-timeout 3s --health-retries 30
     env:
       TEST_MONGODB_URI: mongodb://localhost:27017/order_test
+      TEST_AWS_ENDPOINT_URL: http://localhost:4566
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

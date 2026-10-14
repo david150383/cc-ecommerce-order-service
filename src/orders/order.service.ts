@@ -17,6 +17,8 @@ import { v7 as uuidv7 } from "uuid";
 export interface ActorMeta {
   actor: string;
   correlationId: string;
+  /** The message that caused this change (command messageId), when it came from a queue. */
+  causationId?: string | null;
 }
 
 export interface CreateOrderInput {
@@ -270,6 +272,33 @@ export class OrderService {
     });
   }
 
+  /**
+   * For a duplicate command whose transition already happened: re-emit the result event the
+   * saga waits for (OrderConfirmed / OrderCancelled) so a sender that crashed still gets its answer.
+   */
+  async reemitOutcome(id: string, meta: ActorMeta): Promise<boolean> {
+    const order = await this.orders.findById(id).lean<OrderDoc>();
+    if (!order) return false;
+    let event: OutboxEntry | undefined;
+    if (order.status === "CONFIRMED") {
+      event = this.event(order, "OrderConfirmed", meta, {
+        orderId: order._id,
+        customerId: order.customerId,
+        total: this.money(order.grandTotalMinor, order.currency),
+      });
+    } else if (order.status === "CANCELLED") {
+      event = this.event(order, "OrderCancelled", meta, {
+        orderId: order._id,
+        customerId: order.customerId,
+        previousStatus: [...order.statusHistory].reverse().find((h) => h.to === "CANCELLED")?.from ?? "PENDING",
+        reason: order.cancellationReason ?? "SYSTEM",
+      });
+    }
+    if (!event) return false;
+    await this.orders.updateOne({ _id: id }, { $push: { outbox: event } });
+    return true;
+  }
+
   // ===================================================================== internals
 
   private eventsFor(order: OrderDoc, to: OrderStatus, meta: ActorMeta, cancellationReason?: CancellationReason): OutboxEntry[] {
@@ -304,7 +333,13 @@ export class OrderService {
   }
 
   private event(order: OrderDoc, messageType: string, meta: ActorMeta, payload: Record<string, unknown>): OutboxEntry {
-    const envelope = newEventEnvelope({ messageType, payload, correlationId: meta.correlationId, sagaId: order.sagaId });
+    const envelope = newEventEnvelope({
+      messageType,
+      payload,
+      correlationId: meta.correlationId,
+      causationId: meta.causationId ?? null,
+      sagaId: order.sagaId,
+    });
     return { messageId: envelope.messageId, messageType, envelope: envelope as unknown as Record<string, unknown>, createdAt: new Date() };
   }
 

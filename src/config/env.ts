@@ -47,6 +47,17 @@ const EnvSchema = z.object({
   PRODUCT_SERVICE_URL: z.url().default("http://localhost:4002"),
   DEPENDENCY_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(3_000),
 
+  // Messaging (SNS/SQS). Disabled: REST still works; outbox entries accumulate in the documents.
+  MESSAGING_ENABLED: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  AWS_REGION: z.string().default("us-east-1"),
+  /// Local emulator (Floci). Unset in AWS.
+  AWS_ENDPOINT_URL: z.url().optional(),
+  EVENTS_TOPIC_ARN: z.string().default("arn:aws:sns:us-east-1:000000000000:local-ecommerce-order-events"),
+  COMMANDS_QUEUE_NAME: z.string().default("local-ecommerce-order-commands"),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(50).default(1_000),
+  /// SQS long-poll wait (max 20). Tests use 1.
+  CONSUMER_WAIT_TIME_SECONDS: z.coerce.number().int().min(0).max(20).default(20),
+
   // Pricing policy.
   SUPPORTED_CURRENCIES: z
     .string()

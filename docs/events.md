@@ -29,7 +29,19 @@ MongoDB guarantees atomicity **per document**. So instead of a separate outbox c
 multi-document transaction, and therefore a replica set), each order embeds its pending events in an
 `outbox` array. The status change, the history entry and the events are written by **one**
 `findOneAndUpdate`, so they cannot get out of sync. The Phase 3 relay publishes entries and removes them
-(index `ix_orders_outbox_pending`). Command deduplication (Phase 3) uses the same idea: processed command
-ids are recorded on the order document in the same update.
+(index `ix_orders_outbox_pending`).
+
+**Relay (Phase 3).** It claims ONE document with pending events by atomically setting `relayLeaseUntil`
+(30 s), publishes its entries in order with the `messageType` attribute, `$pull`s each entry once SNS
+accepts it, then clears the lease. Several relay instances never publish the same document at once (tested:
+two racing relays publish 8 events exactly once; removing the lease makes that test fail). After a failed
+publish the lease is kept, so the relay backs off instead of hammering SNS. A crash between Publish and
+`$pull` re-publishes the entry later: at-least-once; consumers dedupe on `messageId`.
+
+**Commands (Phase 3).** `OrderStatusTransitionRequested` is validated against this repo's schema and
+handled by the same `OrderService.transition` as REST. Duplicate idempotency comes from the state machine
+itself: a transition to the current status is a no-op, and for `CONFIRMED`/`CANCELLED` the outcome event
+is re-emitted so a re-sending saga gets its answer. Invalid transitions are acknowledged and logged; unknown
+orders and schema violations are left for the DLQ.
 
 All events validate against `events/schemas/*` (tested against real output, not only examples).

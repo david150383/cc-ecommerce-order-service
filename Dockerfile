@@ -14,6 +14,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+# Command schemas: the SQS consumer validates incoming commands against the schemas this service owns.
+COPY events/schemas ./events/schemas
 USER node
 
 # ---- migrate: one-off job that syncs MongoDB indexes, then exits ----

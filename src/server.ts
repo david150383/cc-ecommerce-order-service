@@ -3,7 +3,9 @@ import { loadEnv } from "./config/env.js";
 import { connectMongo } from "./db/mongo.js";
 import { createLogger } from "./lib/logger.js";
 import { HttpCatalog } from "./orders/catalog-client.js";
+import { createMessaging } from "./messaging/runner.js";
 import { orderModel } from "./orders/order.model.js";
+import { OrderService } from "./orders/order.service.js";
 import { ServiceTokenProvider } from "./security/service-token-provider.js";
 import { TokenVerifier } from "./security/token-verifier.js";
 
@@ -21,11 +23,20 @@ if (!env.SERVICE_CLIENT_SECRET) logger.warn("SERVICE_CLIENT_SECRET is not set: o
 
 let shuttingDown = false;
 
+const orders = orderModel(connection);
+const catalog = new HttpCatalog(env.PRODUCT_SERVICE_URL, tokens, env.DEPENDENCY_TIMEOUT_MS);
+// One OrderService for REST and for queued commands, so both follow exactly the same rules.
+const service = new OrderService(orders, catalog, env);
+const messaging = createMessaging(env, logger, orders, service);
+if (env.MESSAGING_ENABLED) messaging.start();
+else logger.warn("messaging disabled: outbox entries accumulate and commands are not consumed");
+
 const app = createApp({
   env,
   logger,
-  orders: orderModel(connection),
-  catalog: new HttpCatalog(env.PRODUCT_SERVICE_URL, tokens, env.DEPENDENCY_TIMEOUT_MS),
+  orders,
+  service,
+  catalog,
   verifier: new TokenVerifier({
     jwksUrl: env.JWKS_URL,
     issuer: env.JWT_ISSUER,
@@ -54,14 +65,18 @@ function shutdown(signal: NodeJS.Signals): void {
   logger.info({ signal }, "shutdown started");
 
   server.close((err) => {
-    void connection.close().finally(() => {
-      if (err) {
-        logger.error({ err }, "error while closing server");
-        process.exit(1);
-      }
-      logger.info("shutdown complete");
-      process.exit(0);
-    });
+    // Stop consuming and publishing before closing the database they use.
+    void messaging
+      .stop()
+      .then(() => connection.close())
+      .finally(() => {
+        if (err) {
+          logger.error({ err }, "error while closing server");
+          process.exit(1);
+        }
+        logger.info("shutdown complete");
+        process.exit(0);
+      });
   });
   server.closeIdleConnections();
 

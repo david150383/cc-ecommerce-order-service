@@ -22,12 +22,14 @@ export interface AppDependencies {
   catalog: Catalog;
   verifier: TokenVerifier;
   readinessChecks?: ReadinessCheck[];
+  /** Shared with the messaging runner so REST and commands use one OrderService. */
+  service?: OrderService;
 }
 
 // Builds the Express app without starting a server, so tests can drive it
 // in-process with Supertest. All collaborators are injected.
-export function createApp({ env, logger, orders, catalog, verifier, readinessChecks = [] }: AppDependencies): Express {
-  const service = new OrderService(orders, catalog, env);
+export function createApp({ env, logger, orders, catalog, verifier, readinessChecks = [], service: injected }: AppDependencies): Express {
+  const service = injected ?? new OrderService(orders, catalog, env);
   const routers = orderRouters(service, verifier);
 
   const app = express();
