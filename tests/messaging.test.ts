@@ -1,10 +1,11 @@
 import { SNSClient } from "@aws-sdk/client-sns";
 import request from "supertest";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { OutboxRelay } from "../src/messaging/outbox-relay.js";
 import { createMessaging } from "../src/messaging/runner.js";
-import { AWS_ENDPOINT, command, createTestTopology, receiveAll, sendCommand, sns, type TestTopology } from "./floci.js";
+import { AWS_ENDPOINT, command, createTestTopology, receiveAll, sendCommand, sns, sqs, type TestTopology } from "./floci.js";
 import { address, auth, buildTestContext, newId, resetDatabase } from "./helpers.js";
+import { deleteTestQueues, deleteTestTopics } from "./test-cleanup.js";
 
 let topo: TestTopology;
 let ctx: Awaited<ReturnType<typeof buildTestContext>>;
@@ -12,6 +13,10 @@ let messaging: ReturnType<typeof createMessaging>;
 
 beforeAll(async () => {
   topo = await createTestTopology();
+});
+afterAll(async () => {
+  await deleteTestTopics(sns, topo.prefix);
+  await deleteTestQueues(sqs, topo.prefix);
 });
 
 beforeEach(async () => {

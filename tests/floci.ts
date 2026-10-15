@@ -19,6 +19,8 @@ export const sqs = new SQSClient({ ...config, useQueueUrlAsEndpoint: false });
 export const sns = new SNSClient(config);
 
 export interface TestTopology {
+  /** Every queue/topic of this run starts with it (cleanup). */
+  prefix: string;
   topicArn: string;
   commandsQueue: string;
   commandsUrl: string;
@@ -51,6 +53,7 @@ export async function createTestTopology(): Promise<TestTopology> {
     }),
   );
   return {
+    prefix: `test-${id}-`,
     topicArn: TopicArn!,
     commandsQueue: `test-${id}-commands`,
     commandsUrl: commands.QueueUrl!,
