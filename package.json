@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "db:sync-indexes": "tsx --env-file-if-exists=.env src/scripts/sync-indexes.ts",
-    "openapi:export": "tsx src/scripts/export-openapi.ts"
+    "openapi:export": "tsx src/scripts/export-openapi.ts",
+    "contracts:verify": "node scripts/verify-contracts.mjs"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",

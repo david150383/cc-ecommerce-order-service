@@ -8,8 +8,8 @@
   "x-consumers": [
     "ecommerce-order-service"
   ],
-  "x-channel": "SQS order-commands",
-  "$ref": "envelope.v1.schema.json",
+  "x-channel": "SQS order-commands.fifo",
+  "$ref": "../common/envelope.v1.schema.json",
   "properties": {
     "messageKind": {
       "const": "command"
