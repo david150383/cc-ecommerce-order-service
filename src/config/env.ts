@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
   MONGODB_URI: z.string().regex(/^mongodb(\+srv)?:\/\//),
+  /// CA bundle for TLS to the database. Default for Amazon DocumentDB: the RDS bundle shipped in the image.
+  MONGODB_TLS_CA_FILE: z.string().min(1).optional(),
 
   // Incoming tokens: user tokens (shared audience) and service tokens addressed to this service.
   JWKS_URL: z.url().default("http://localhost:4001/.well-known/jwks.json"),
@@ -77,7 +79,24 @@ const EnvSchema = z.object({
       minSubtotalMinor: z.number().int().min(0).optional(),
     }),
   ),
+}).superRefine((e, ctx) => {
+  // Amazon DocumentDB: fail at startup, not on the first write. (Messages never echo the URI: it holds
+  // the password.)
+  if (!isDocumentDb(e.MONGODB_URI)) return;
+  const params = new URLSearchParams(e.MONGODB_URI.split("?")[1] ?? "");
+  if (params.get("retryWrites") !== "false") {
+    ctx.addIssue({ code: "custom", path: ["MONGODB_URI"], message: "DocumentDB does not support retryable writes: add retryWrites=false" });
+  }
+  if (params.get("tls") !== "true" && params.get("ssl") !== "true") {
+    ctx.addIssue({ code: "custom", path: ["MONGODB_URI"], message: "DocumentDB requires TLS: add tls=true" });
+  }
 });
+
+/** True for an Amazon DocumentDB cluster endpoint (by host name; the URI is not parsed further). */
+export function isDocumentDb(uri: string): boolean {
+  const host = uri.replace(/^mongodb(\+srv)?:\/\/([^@/]*@)?/, "").split(/[/?]/)[0] ?? "";
+  return host.split(",").some((h) => /\.docdb\.amazonaws\.com(:\d+)?$/.test(h));
+}
 
 export type Env = z.infer<typeof EnvSchema>;
 

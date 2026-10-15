@@ -11,7 +11,7 @@ import { TokenVerifier } from "./security/token-verifier.js";
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
-const connection = await connectMongo(env.MONGODB_URI);
+const connection = await connectMongo(env.MONGODB_URI, { tlsCAFile: env.MONGODB_TLS_CA_FILE });
 
 const tokens = new ServiceTokenProvider({
   authUrl: env.AUTH_SERVICE_URL,

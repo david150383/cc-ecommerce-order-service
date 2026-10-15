@@ -7,7 +7,7 @@ import { connectMongo } from "../db/mongo.js";
 import { orderModel } from "../orders/order.model.js";
 
 const env = loadEnv();
-const connection = await connectMongo(env.MONGODB_URI);
+const connection = await connectMongo(env.MONGODB_URI, { tlsCAFile: env.MONGODB_TLS_CA_FILE });
 const dropped = await orderModel(connection).syncIndexes();
 const indexes = await orderModel(connection).listIndexes();
 console.log(
