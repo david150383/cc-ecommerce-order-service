@@ -240,7 +240,11 @@ export class OrderService {
         .findOneAndUpdate(
           { _id: id, status: order.status, version: order.version },
           {
-            $set: { status: to, ...(to === "CANCELLED" && { cancellationReason: cancellationReason ?? "SYSTEM" }) },
+            $set: {
+              status: to,
+              ...(to === "CANCELLED" && { cancellationReason: cancellationReason ?? "SYSTEM" }),
+              ...(to === "CANCELLATION_PENDING" && cancellationReason && { cancellationReason }),
+            },
             $inc: { version: 1 },
             $push: { statusHistory: entry, outbox: { $each: events } },
           },
@@ -265,7 +269,8 @@ export class OrderService {
       return (await this.transition(id, "CANCELLED", reason, meta, reason)).order;
     }
     if (CANCELLABLE_AFTER_PAYMENT.includes(order.status)) {
-      return (await this.transition(id, "CANCELLATION_PENDING", reason, meta)).order;
+      // Paid: the saga refunds and returns the stock (OrderCancellationRequested), then moves the order on.
+      return (await this.transition(id, "CANCELLATION_PENDING", reason, meta, reason)).order;
     }
     throw new HttpProblem(409, "CANNOT_CANCEL", `An order that is ${order.status} cannot be cancelled`, undefined, undefined, {
       extra: { status: order.status },
@@ -326,6 +331,16 @@ export class OrderService {
           customerId: order.customerId,
           previousStatus: order.status,
           reason: cancellationReason ?? "SYSTEM",
+        }),
+      );
+    }
+    if (to === "CANCELLATION_PENDING") {
+      events.push(
+        this.event(order, "OrderCancellationRequested", meta, {
+          orderId: order._id,
+          customerId: order.customerId,
+          previousStatus: order.status,
+          reason: cancellationReason === "ADMIN" ? "ADMIN" : "CUSTOMER_REQUESTED",
         }),
       );
     }

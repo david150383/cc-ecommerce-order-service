@@ -265,6 +265,32 @@ describe("cancellation", () => {
     expect((await cancel(id)).body.order.status).toBe("CANCELLATION_PENDING");
   });
 
+  it("after payment: OrderCancellationRequested (schema-valid, with the saga id) is queued once, then the saga refunds", async () => {
+    const sagaId = newId();
+    const id = (await create(orderBody({ sagaId }))).body.order.id;
+    for (const s of ["INVENTORY_RESERVING", "INVENTORY_RESERVED", "PAYMENT_PENDING", "PAYMENT_SUCCEEDED", "CONFIRMED", "PROCESSING"]) await transition(id, s);
+    expect((await cancel(id)).body.order).toMatchObject({ status: "CANCELLATION_PENDING", cancellationReason: "CUSTOMER_REQUESTED" });
+    await cancel(id); // a second click changes nothing and queues nothing
+
+    const doc = (await ctx.orders.findById(id, { outbox: 1 }).lean())!;
+    const requested = doc.outbox.filter((e) => e.messageType === "OrderCancellationRequested");
+    expect(requested).toHaveLength(1);
+    expect(requested[0]!.envelope).toMatchObject({ sagaId, payload: { orderId: id, customerId, previousStatus: "PROCESSING", reason: "CUSTOMER_REQUESTED" } });
+    const schemasDir = join(import.meta.dirname, "..", "events", "schemas");
+    const ajv = new Ajv2020({ strict: true, strictTypes: false, allErrors: true });
+    addFormats.default(ajv);
+    ajv.addVocabulary(["x-producer", "x-consumers", "x-channel", "x-message-kind"]);
+    for (const f of readdirSync(schemasDir)) ajv.addSchema(JSON.parse(readFileSync(join(schemasDir, f), "utf8")));
+    const validate = ajv.getSchema("https://schemas.ecommerce.local/order-service/order-cancellation-requested.v1.schema.json")!;
+    validate(requested[0]!.envelope);
+    expect(validate.errors ?? []).toEqual([]);
+
+    // The saga then drives it: REFUND_PENDING → REFUNDED (terminal).
+    await transition(id, "REFUND_PENDING");
+    const done = await transition(id, "REFUNDED");
+    expect(done.body.order).toMatchObject({ status: "REFUNDED", cancellationReason: "CUSTOMER_REQUESTED" });
+  });
+
   it("not while payment is being captured, not once shipped, and never someone else's order", async () => {
     const id = (await create()).body.order.id;
     for (const s of ["INVENTORY_RESERVING", "INVENTORY_RESERVED", "PAYMENT_PENDING", "PAYMENT_SUCCEEDED"]) await transition(id, s);

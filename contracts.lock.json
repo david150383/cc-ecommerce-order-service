@@ -1,7 +1,7 @@
 {
   "source": "ecommerce-contracts",
-  "version": "v1.0.0",
-  "commit": "2820581f413c93db7ccd90c6411fe2d125736d1d",
+  "version": "v1.2.0",
+  "commit": "7eb336305c2aa3bfbd163a64f043605d98dbadfd",
   "service": "order-service",
   "directories": [
     "events/schemas",
@@ -9,6 +9,7 @@
   ],
   "files": {
     "events/examples/notification-requested.v1.json": "fa904ccf19d6f575a9b325fd515f9ec2f14732ed35c8424792617ea598b45ff8",
+    "events/examples/order-cancellation-requested.v1.json": "84f37dfc327478ae8106fbf81f632bdc739f3a3d2735af7ef417989492b6799d",
     "events/examples/order-cancelled.v1.json": "7763b485eec9137d72dd636772b5567c75120e517776018d8e5a55ba4e28b62a",
     "events/examples/order-confirmed.v1.json": "a0208022cfeb6c5a52193fa572e29df889f9a5e89b7e2f2e31d863bb47762417",
     "events/examples/order-created.v1.json": "b7dffa342998934b2331dd6637035c78205dd92bc05841fbc7ca257b470ab7b7",
@@ -16,6 +17,7 @@
     "events/examples/order-status-transition-requested.v1.json": "299e88e1ee1dbbf9517ef937459adf2a5cf83ec433c1b137f016f2d3a9de8f8f",
     "events/schemas/envelope.v1.schema.json": "773577105e1a89528f466579fd827da24313ff0f6a8edcd248358a0163e53d5a",
     "events/schemas/notification-requested.v1.schema.json": "427d06803368fd09cd5741591112ce7415ad5cb231b0ae3459f42aeb5d4675f2",
+    "events/schemas/order-cancellation-requested.v1.schema.json": "5c9cf417f388d6ade1a82da65712b7705c7a97991545c70c1b24f9fdb91d145a",
     "events/schemas/order-cancelled.v1.schema.json": "67be8f355c5ffff2fd190ab5141dd8b594f10a82dd14aca0ab8fea4d083f0cf4",
     "events/schemas/order-confirmed.v1.schema.json": "aa981f6aa994970013538afbe905e376f3ac24e87f6e7d7c3ebc702fd3d908a6",
     "events/schemas/order-created.v1.schema.json": "84b02695342ddecb8896b7062568b51e4c0638c1b163a9c744460473f427cf8b",
