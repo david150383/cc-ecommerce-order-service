@@ -40,6 +40,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: No high or critical advisories in production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - name: Unit + integration tests (also checks openapi/openapi.json is current)
